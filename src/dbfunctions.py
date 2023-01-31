@@ -47,6 +47,13 @@ def authorized_chat_id(user):
         result = cur.fetchone()
     return result[0]
 
+def authorized_username(chat_id):
+    with MySQLCursor() as cur:
+        query = f"SELECT username FROM users WHERE chat_id='{chat_id}'"
+        cur.execute(query)
+        result = cur.fetchone()
+    return result[0]
+
 def all_chat_ids():
     with MySQLCursor() as cur:
         query = f"SELECT chat_id FROM users"

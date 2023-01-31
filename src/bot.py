@@ -4,6 +4,8 @@ from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
 from telegram.ext import filters, CallbackQueryHandler, MessageHandler, ApplicationBuilder, ContextTypes, CommandHandler
 import dbfunctions as db
+import osfunctions as osf
+import const
 
 # from direction import get_info
 
@@ -24,6 +26,8 @@ TEXT_4 = 'please send your username:'
 TEXT_5 = 'please send your password:'
 TEXT_6 = 'you are successfully authorized!'
 TEXT_7 = 'username or password is incorrect'
+
+TEXT_30 = 'saved!'
 
 
 authorizing_chat_ids = []
@@ -71,66 +75,22 @@ async def main(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             break
 
 
-        
-
-    
-
-    #     orders.append(Order(
-    #         chat_id=update.message.chat.id,
-    #         date=update.message.date,
-    #         location=Location(longitude=0.0, latitude=0.0),
-    #         destination=Location(longitude=0.0, latitude=0.0),
-    #     ))
-    #     
-
-    
-    # else:
-    #     await start(update=update, context=context)
+async def backup(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    chat_id = update.effective_chat.id
+    fileID = update.message.photo[-1].file_id
+    new_file = await context.bot.get_file(file_id=fileID)
+    auth_username = db.authorized_username(chat_id)
+    # new_file = await update.message.effective_attachment.get_file()
+    await new_file.download_to_drive(custom_path=f'backup/{auth_username}/{fileID}.jpg')
+    await context.bot.send_message(chat_id=chat_id, text=TEXT_30, reply_to_message_id=update.message.id)
 
 
+async def myfiles(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    chat_id = update.effective_chat.id
+    auth_username = db.authorized_username(chat_id)
+    for file in osf.get_files_list(auth_username):
+        await context.bot.send_document(chat_id=update.effective_chat.id, document=f'backup/{auth_username}/{file}')
 
-    
-
-
-async def location(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    print(update.message.location)
-    # for order in orders:
-    #     if order.chat_id == update.message.chat.id:
-    #         if order.status == ORDER_STATUS.waiting_for_location:
-    #             order.location.longitude = update.message.location.longitude
-    #             order.location.latitude = update.message.location.latitude
-    #             order.location.show()
-    #             order.status += 1
-    #             await context.bot.send_message(update.message.chat.id, text=TEXT_5)
-
-    #         elif order.status == ORDER_STATUS.waiting_for_destination:
-    #             order.destination.longitude = update.message.location.longitude
-    #             order.destination.latitude = update.message.location.latitude
-    #             order.destination.show()
-    #             order.status += 1
-    #             await context.bot.send_message(update.message.chat.id, text=TEXT_6)
-
-
-async def serve(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    print("***************")
-    # print(len(orders))
-    # if len(orders) == 0:
-    #     await context.bot.send_message(chat_id=update.effective_chat.id, text=TEXT_4)
-    # else:
-    #     for order in orders:
-    #         if order.status == ORDER_STATUS.done:
-    #             await context.bot.send_message(
-    #                 chat_id=update.effective_chat.id,
-    #                 text=f"from: {order.location.longitude}, {order.location.latitude}\nto: {order.destination.longitude}, {order.destination.latitude}"
-    #             )
-
-
-async def caps(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    text_caps = ' '.join(context.args).upper()
-
-    # info = get_info("https://www.google.com/maps/dir/41.3196905,69.2666641/41.366112,69.212628")
-
-    await context.bot.send_message(chat_id=update.effective_chat.id, text=text_caps)
 
 async def agree(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Sends a message with three inline buttons attached."""
@@ -166,13 +126,17 @@ if __name__ == '__main__':
     application = ApplicationBuilder().token(TOKEN).build()
     
     start_handler = CommandHandler('start', start)
+    myfiles_handler = CommandHandler('myfiles', myfiles)
     main_handler = MessageHandler(filters.TEXT, main)
+    backup_handler = MessageHandler(filters.PHOTO, backup)
     # location_handler = MessageHandler(filters.LOCATION, location)
     # echo_handler = MessageHandler(filters.TEXT & (~filters.COMMAND), echo)
     unknown_handler = MessageHandler(filters.COMMAND, unknown)
 
     application.add_handler(start_handler)
+    application.add_handler(myfiles_handler)
     application.add_handler(main_handler)
+    application.add_handler(backup_handler)
     # application.add_handler(location_handler)
     # application.add_handler(echo_handler)
     # application.add_handler(CallbackQueryHandler(button))
