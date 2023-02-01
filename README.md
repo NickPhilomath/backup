@@ -8,10 +8,8 @@ Next features have been learnt during the project:
 * Basic usage of MySQL
 
 Future developing:
-* complete authorization
-* support all type of telegram files
-* introducing a payment method
-* deployment
+* control file system by user himself (deleting, moving, creating directory and etc)
+* add membership and payments
 
 # installation 
 
