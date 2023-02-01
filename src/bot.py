@@ -6,6 +6,7 @@ from telegram.ext import filters, CallbackQueryHandler, MessageHandler, Applicat
 import dbfunctions as db
 import osfunctions as osf
 import const
+from levels import LOGIN_LEVEL, SIGNUP_LEVEL, Login, Signup
 
 # from direction import get_info
 
@@ -23,14 +24,26 @@ TEXT_1 = 'login'
 TEXT_2 = 'signup'
 TEXT_3 = 'you are already authorized in this chat'
 TEXT_4 = 'please send your username:'
-TEXT_5 = 'please send your password:'
+TEXT_5 = 'send your password:'
 TEXT_6 = 'you are successfully authorized!'
 TEXT_7 = 'username or password is incorrect'
+TEXT_8 = 'please send a username:'
+TEXT_9 = 'send a email:'
+TEXT_10 = 'send a password:'
+TEXT_11 = 'this username is alreacy exitst, please try another one:'
+TEXT_12 = 'account has been successfully created! Now you can login.'
+TEXT_13 = 'logout'
+TEXT_14 = 'you are successfully logged out.'
+TEXT_15 = "Sorry, I didn't understand that command."
+
+
 
 TEXT_30 = 'saved!'
 
 
-authorizing_chat_ids = []
+logging_in_chats = []
+signing_up_chats = []
+
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -44,35 +57,80 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def main(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     chat_id = update.effective_chat.id
+    message_text = update.message.text
 
-    if update.message.text == TEXT_1:
-        # check if user is authorized already
+    if message_text == TEXT_1:
+        # check if user is logged in already
         chat_ids = db.all_chat_ids()
         if chat_id in chat_ids:
             await context.bot.send_message(chat_id=chat_id, text=TEXT_3)
         else:
-            authorizing_chat_ids.append([chat_id, "", 0])
+            # check if user already logging in
+            for l in logging_in_chats:
+                if l.chat_id == chat_id:
+                    logging_in_chats.remove(l)
+                    break
+            # add user to login list
+            logging_in_chats.append(Login(chat_id=chat_id))
             await context.bot.send_message(chat_id=chat_id, text=TEXT_4)
 
-        return
+    elif message_text == TEXT_2:
+        # check if user already logging in
+        for s in signing_up_chats:
+            if s.chat_id == chat_id:
+                signing_up_chats.remove(s)
+                break
+        signing_up_chats.append(Signup(chat_id=chat_id))
+        await context.bot.send_message(chat_id=chat_id, text=TEXT_8)
 
-    # check if user is trying to authorize
-    for a in authorizing_chat_ids:
-        if a[0] == chat_id:
-            # if user is typing a username
-            if a[2] == 0:
-                a[1] = update.message.text
-                a[2] = 1
-                await context.bot.send_message(chat_id=chat_id, text=TEXT_5)
-            # if user is typing a password
-            elif a[2] == 1:
-                print(a[1], update.message.text)
-                if db.authorize(username=a[1], password=update.message.text, chat_id=chat_id):
-                    await context.bot.send_message(chat_id=chat_id, text=TEXT_6)
-                else:
-                    authorizing_chat_ids.remove(a)
-                    await context.bot.send_message(chat_id=chat_id, text=TEXT_7)
-            break
+    elif message_text == TEXT_13:
+        db.logout_chat(chat_id=chat_id)
+        await context.bot.send_message(chat_id=chat_id, text=TEXT_14)
+
+    else:
+        # check if user is trying to login
+        for a in logging_in_chats:
+            if a.chat_id == chat_id:
+                # if user is typing a username
+                if a.level == LOGIN_LEVEL.waiting_for_username:
+                    a.username = message_text
+                    a.level = LOGIN_LEVEL.waiting_for_password
+                    await context.bot.send_message(chat_id=chat_id, text=TEXT_5)
+                # if user is typing a password
+                elif a.level == LOGIN_LEVEL.waiting_for_password:
+                    a.password = message_text
+                    print(a.username, a.password)
+                    if db.authorize(username=a.username, password=a.password, chat_id=chat_id):
+                        await context.bot.send_message(chat_id=chat_id, text=TEXT_6)
+                    else:
+                        await context.bot.send_message(chat_id=chat_id, text=TEXT_7)
+                    logging_in_chats.remove(a)
+                break
+
+         # check if user is trying to sing up
+        for a in signing_up_chats:
+            if a.chat_id == chat_id:
+                # if user is typing a username
+                if a.level == SIGNUP_LEVEL.waiting_for_username:
+                    if db.user_exists(message_text):
+                        await context.bot.send_message(chat_id=chat_id, text=TEXT_11)
+                    else:
+                        a.username = message_text
+                        a.level = SIGNUP_LEVEL.waiting_for_email
+                        await context.bot.send_message(chat_id=chat_id, text=TEXT_9)
+                # if user is typing a password
+                elif a.level == SIGNUP_LEVEL.waiting_for_email:
+                    a.email = message_text
+                    a.level = SIGNUP_LEVEL.waiting_for_password
+                    await context.bot.send_message(chat_id=chat_id, text=TEXT_10)
+                elif a.level == SIGNUP_LEVEL.waiting_for_password:
+                    a.password = message_text
+                    print(a.username, a.email, a.password)
+                    db.create_user(username=a.username, email=a.email, password=a.password)
+                    osf.create_directory(username=a.username)
+                    await context.bot.send_message(chat_id=chat_id, text=TEXT_12)
+                    signing_up_chats.remove(a)
+                break
 
 
 async def backup(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -119,7 +177,7 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def unknown(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await context.bot.send_message(chat_id=update.effective_chat.id, text="Sorry, I didn't understand that command.")
+    await context.bot.send_message(chat_id=update.effective_chat.id, text=TEXT_15)
 
 
 if __name__ == '__main__':
@@ -127,19 +185,19 @@ if __name__ == '__main__':
     
     start_handler = CommandHandler('start', start)
     myfiles_handler = CommandHandler('myfiles', myfiles)
+    unknown_handler = MessageHandler(filters.COMMAND, unknown)
     main_handler = MessageHandler(filters.TEXT, main)
     backup_handler = MessageHandler(filters.PHOTO, backup)
     # location_handler = MessageHandler(filters.LOCATION, location)
     # echo_handler = MessageHandler(filters.TEXT & (~filters.COMMAND), echo)
-    unknown_handler = MessageHandler(filters.COMMAND, unknown)
 
     application.add_handler(start_handler)
     application.add_handler(myfiles_handler)
+    application.add_handler(unknown_handler)
     application.add_handler(main_handler)
     application.add_handler(backup_handler)
     # application.add_handler(location_handler)
     # application.add_handler(echo_handler)
     # application.add_handler(CallbackQueryHandler(button))
-    application.add_handler(unknown_handler)
     
     application.run_polling()

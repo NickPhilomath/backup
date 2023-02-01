@@ -37,7 +37,7 @@ def create_database():
 
 def create_users_table():
     with MySQLCursor() as cur:
-        query = "CREATE TABLE users (id BIGINT NOT NULL AUTO_INCREMENT, username CHAR(30) NOT NULL, password CHAR(16) NOT NULL, chat_id BIGINT, PRIMARY KEY (id))"
+        query = "CREATE TABLE users (id BIGINT NOT NULL AUTO_INCREMENT, username CHAR(30) NOT NULL, password CHAR(16) NOT NULL, email CHAR(30) NOT NULL, chat_id BIGINT, PRIMARY KEY (id))"
         cur.execute(query)
 
 def authorized_chat_id(user):
@@ -54,6 +54,13 @@ def authorized_username(chat_id):
         result = cur.fetchone()
     return result[0]
 
+def authorized_password(username):
+    with MySQLCursor() as cur:
+        query = f"SELECT password FROM users WHERE username='{username}'"
+        cur.execute(query)
+        result = cur.fetchone()
+    return result[0]
+
 def all_chat_ids():
     with MySQLCursor() as cur:
         query = f"SELECT chat_id FROM users"
@@ -61,28 +68,45 @@ def all_chat_ids():
         result = cur.fetchall()
     return [r[0] for r in result]
 
-def authorize(username, password, chat_id):
-    # check if password is correct
+def user_exists(username):
     with MySQLCursor() as cur:
-        query = f"SELECT password FROM users WHERE username='{username}'"
+        query = f"SELECT COUNT(*) AS total FROM users WHERE username='{username}'"
         cur.execute(query)
-        user_password = cur.fetchone()[0]
-
-    print("up", user_password)
-
-    if user_password == password:
-        # authorize user to the chat 
-        with MySQLCursor() as cur:
-            query = f"UPDATE users SET chat_id='{chat_id}' WHERE username='{username}'"
-            cur.execute(query)
-        
+        result = cur.fetchone()[0]
+        if result == 0:
+            return False
         return True
+
+def authorize(username, password, chat_id):
+    # check if user exists
+    if user_exists(username):
+        # get authorized password
+        user_password = authorized_password(username)
+        # check if password is correct
+        if user_password == password:
+            # authorize user to the chat 
+            with MySQLCursor() as cur:
+                query = f"UPDATE users SET chat_id='{chat_id}' WHERE username='{username}'"
+                cur.execute(query)
+            
+            return True
     return False
+
+def create_user(username, email, password):
+    with MySQLCursor() as cur:
+        query = f"INSERT INTO users(username, email, password) VALUES('{username}', '{email}', '{password}')"
+        cur.execute(query)
+
+def logout_chat(chat_id):
+    with MySQLCursor() as cur:
+        query = f"UPDATE users SET chat_id=NULL WHERE chat_id='{chat_id}'"
+        cur.execute(query)
 
 
 
 if __name__ == '__main__':
-    print(all_chat_ids())
+    # create_user('nick', 'haydff@hays.com', '@dragon$')
+    logout_chat('nick')
 
 
 # def show_menu():
