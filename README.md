@@ -19,9 +19,9 @@ you need mysql and python3 to install backup server
 
 instructions:
 * clone the project
-* give execute permission to install.sh file and run
+* give execute permission to install.sh file and run. this script creates virtual environment and install requirement automatically for you
 * add your environment variables into .env file
-* run src/migrate.py to initialize database
+* run ``python3 src/migrate.py`` to initialize database
 
 and now you are ready to run your server. 
-simply call python3 src/bot.py
+simply call ``python3 src/bot.py``
