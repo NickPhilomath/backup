@@ -168,7 +168,7 @@ async def backup(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         new_file = await context.bot.get_file(file_id=file_id)
         # new_file = await update.message.effective_attachment.get_file()
         await new_file.download_to_drive(custom_path=f'backup/{auth_username}/{file_name}')
-        await context.bot.send_message(chat_id=chat_id, text=TEXT_16, reply_to_message_id=chat_id)
+        await context.bot.send_message(chat_id=chat_id, text=TEXT_16, reply_to_message_id=update.message.id)
 
 
 async def myfiles(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
