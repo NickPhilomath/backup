@@ -77,6 +77,12 @@ def user_exists(username):
             return False
         return True
 
+def is_authorized(chat_id):
+    chat_ids = all_chat_ids()
+    if chat_id in chat_ids:
+        return True
+    return False
+
 def authorize(username, password, chat_id):
     # check if user exists
     if user_exists(username):

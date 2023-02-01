@@ -38,6 +38,8 @@ TEXT_14 = 'you are successfully logged out.'
 TEXT_15 = "Sorry, I didn't understand that command."
 TEXT_16 = 'saved!'
 TEXT_17 = 'sorry, file is too big'
+TEXT_18 = 'you need to login to back up your files.'
+TEXT_19 = 'you need to login to see your files.'
 
 
 
@@ -60,22 +62,21 @@ async def main(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     message_text = update.message.text
 
     if message_text == TEXT_1:
-        # check if user is logged in already
-        chat_ids = db.all_chat_ids()
-        if chat_id in chat_ids:
+        # check if user is authrized already
+        if db.is_authorized(chat_id=chat_id):
             await context.bot.send_message(chat_id=chat_id, text=TEXT_3)
-        else:
-            # check if user already logging in
-            for l in logging_in_chats:
-                if l.chat_id == chat_id:
-                    logging_in_chats.remove(l)
-                    break
-            # add user to login list
-            logging_in_chats.append(Login(chat_id=chat_id))
-            await context.bot.send_message(chat_id=chat_id, text=TEXT_4)
+            return
+        # check if user already logging in
+        for l in logging_in_chats:
+            if l.chat_id == chat_id:
+                logging_in_chats.remove(l)
+                break
+        # add user to login list
+        logging_in_chats.append(Login(chat_id=chat_id))
+        await context.bot.send_message(chat_id=chat_id, text=TEXT_4)
 
     elif message_text == TEXT_2:
-        # check if user already logging in
+        # check if user already signing up
         for s in signing_up_chats:
             if s.chat_id == chat_id:
                 signing_up_chats.remove(s)
@@ -134,6 +135,11 @@ async def main(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 async def backup(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     chat_id = update.effective_chat.id
     update_message = update.message
+    # check if user is authrized
+    if not db.is_authorized(chat_id=chat_id):
+        await context.bot.send_message(chat_id=chat_id, text=TEXT_18)
+        return
+
     # get document details
     if update_message.document: # if type(update_message.document) == Document: 
         file_id = update_message.document.file_id
@@ -167,6 +173,11 @@ async def backup(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def myfiles(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     chat_id = update.effective_chat.id
+    # check if user is authrized
+    if not db.is_authorized(chat_id=chat_id):
+        await context.bot.send_message(chat_id=chat_id, text=TEXT_19)
+        return
+
     auth_username = db.authorized_username(chat_id)
     for file in osf.get_files_list(auth_username):
         await context.bot.send_document(chat_id=update.effective_chat.id, document=f'backup/{auth_username}/{file}')
