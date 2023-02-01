@@ -16,5 +16,5 @@ source ./venv/bin/activate
 echo "installing all requirements..."
 pip3 install -r requirements.txt
 
-echo "running server..."
-python3 ./src/bot.py
+#echo "running server..."
+#python3 ./src/bot.py
