@@ -24,4 +24,7 @@ instructions:
 * run ``python3 src/migrate.py`` to initialize database
 
 and now you are ready to run your server. 
-simply call ``python3 src/bot.py``
+give execute permission and simply call ``./runserver``
+
+use ``nohup ./runserver.sh > /dev/null 2>&1 &`` if you want to run in background
+
