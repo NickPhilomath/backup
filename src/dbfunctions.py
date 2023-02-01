@@ -106,7 +106,7 @@ def logout_chat(chat_id):
 
 if __name__ == '__main__':
     # create_user('nick', 'haydff@hays.com', '@dragon$')
-    logout_chat('nick')
+    pass
 
 
 # def show_menu():

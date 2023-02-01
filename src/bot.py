@@ -3,6 +3,7 @@ import logging
 from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup, Document
 from telegram.ext import filters, CallbackQueryHandler, MessageHandler, ApplicationBuilder, ContextTypes, CommandHandler
+from telegram.error import BadRequest
 import dbfunctions as db
 import osfunctions as osf
 import const
@@ -35,8 +36,9 @@ TEXT_12 = 'account has been successfully created! Now you can login.'
 TEXT_13 = 'logout'
 TEXT_14 = 'you are successfully logged out.'
 TEXT_15 = "Sorry, I didn't understand that command."
+TEXT_16 = 'saved!'
+TEXT_17 = 'sorry, file is too big'
 
-TEXT_30 = 'saved!'
 
 
 logging_in_chats = []
@@ -136,23 +138,31 @@ async def backup(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if update_message.document: # if type(update_message.document) == Document: 
         file_id = update_message.document.file_id
         file_name = update_message.document.file_name
+        file_size = update_message.document.file_size
     elif update_message.photo:
         file_id = update_message.photo[-1].file_id
         file_name = update_message.photo[-1].file_unique_id + '.jpg'
+        file_size = update_message.photo[-1].file_size
     elif update_message.audio:
         file_id = update_message.audio.file_id
         file_name = update_message.audio.file_name
+        file_size = update_message.audio.file_size
     elif update_message.voice:
         file_id = update_message.voice.file_id
         file_name = update_message.voice.file_unique_id + '.ogg'
+        file_size = update_message.voice.file_size
     
     # saving to drive:
     if file_id and file_name:
+        # check file size
+        if file_size > const.DOWNLOAD_LIMIT:
+            await context.bot.send_message(chat_id=chat_id, text=TEXT_17, reply_to_message_id=chat_id)
+            return
         auth_username = db.authorized_username(chat_id)
         new_file = await context.bot.get_file(file_id=file_id)
         # new_file = await update.message.effective_attachment.get_file()
         await new_file.download_to_drive(custom_path=f'backup/{auth_username}/{file_name}')
-        await context.bot.send_message(chat_id=chat_id, text=TEXT_30, reply_to_message_id=update.message.id)
+        await context.bot.send_message(chat_id=chat_id, text=TEXT_16, reply_to_message_id=chat_id)
 
 
 async def myfiles(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
