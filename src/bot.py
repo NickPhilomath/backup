@@ -1,7 +1,7 @@
 import os
 import logging
 from dotenv import load_dotenv
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup, Document
 from telegram.ext import filters, CallbackQueryHandler, MessageHandler, ApplicationBuilder, ContextTypes, CommandHandler
 import dbfunctions as db
 import osfunctions as osf
@@ -25,7 +25,7 @@ TEXT_2 = 'signup'
 TEXT_3 = 'you are already authorized in this chat'
 TEXT_4 = 'please send your username:'
 TEXT_5 = 'send your password:'
-TEXT_6 = 'you are successfully authorized!'
+TEXT_6 = 'you are successfully logged in!'
 TEXT_7 = 'username or password is incorrect'
 TEXT_8 = 'please send a username:'
 TEXT_9 = 'send a email:'
@@ -35,8 +35,6 @@ TEXT_12 = 'account has been successfully created! Now you can login.'
 TEXT_13 = 'logout'
 TEXT_14 = 'you are successfully logged out.'
 TEXT_15 = "Sorry, I didn't understand that command."
-
-
 
 TEXT_30 = 'saved!'
 
@@ -99,7 +97,6 @@ async def main(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                 # if user is typing a password
                 elif a.level == LOGIN_LEVEL.waiting_for_password:
                     a.password = message_text
-                    print(a.username, a.password)
                     if db.authorize(username=a.username, password=a.password, chat_id=chat_id):
                         await context.bot.send_message(chat_id=chat_id, text=TEXT_6)
                     else:
@@ -125,7 +122,6 @@ async def main(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                     await context.bot.send_message(chat_id=chat_id, text=TEXT_10)
                 elif a.level == SIGNUP_LEVEL.waiting_for_password:
                     a.password = message_text
-                    print(a.username, a.email, a.password)
                     db.create_user(username=a.username, email=a.email, password=a.password)
                     osf.create_directory(username=a.username)
                     await context.bot.send_message(chat_id=chat_id, text=TEXT_12)
@@ -135,12 +131,28 @@ async def main(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def backup(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     chat_id = update.effective_chat.id
-    fileID = update.message.photo[-1].file_id
-    new_file = await context.bot.get_file(file_id=fileID)
-    auth_username = db.authorized_username(chat_id)
-    # new_file = await update.message.effective_attachment.get_file()
-    await new_file.download_to_drive(custom_path=f'backup/{auth_username}/{fileID}.jpg')
-    await context.bot.send_message(chat_id=chat_id, text=TEXT_30, reply_to_message_id=update.message.id)
+    update_message = update.message
+    # get document details
+    if update_message.document: # if type(update_message.document) == Document: 
+        file_id = update_message.document.file_id
+        file_name = update_message.document.file_name
+    elif update_message.photo:
+        file_id = update_message.photo[-1].file_id
+        file_name = update_message.photo[-1].file_unique_id + '.jpg'
+    elif update_message.audio:
+        file_id = update_message.audio.file_id
+        file_name = update_message.audio.file_name
+    elif update_message.voice:
+        file_id = update_message.voice.file_id
+        file_name = update_message.voice.file_unique_id + '.ogg'
+    
+    # saving to drive:
+    if file_id and file_name:
+        auth_username = db.authorized_username(chat_id)
+        new_file = await context.bot.get_file(file_id=file_id)
+        # new_file = await update.message.effective_attachment.get_file()
+        await new_file.download_to_drive(custom_path=f'backup/{auth_username}/{file_name}')
+        await context.bot.send_message(chat_id=chat_id, text=TEXT_30, reply_to_message_id=update.message.id)
 
 
 async def myfiles(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -186,8 +198,8 @@ if __name__ == '__main__':
     start_handler = CommandHandler('start', start)
     myfiles_handler = CommandHandler('myfiles', myfiles)
     unknown_handler = MessageHandler(filters.COMMAND, unknown)
-    main_handler = MessageHandler(filters.TEXT, main)
-    backup_handler = MessageHandler(filters.PHOTO, backup)
+    main_handler = MessageHandler(filters.TEXT & (~filters.COMMAND), main)
+    backup_handler = MessageHandler(~filters.TEXT, backup)
     # location_handler = MessageHandler(filters.LOCATION, location)
     # echo_handler = MessageHandler(filters.TEXT & (~filters.COMMAND), echo)
 

@@ -4,3 +4,5 @@ venv
 .env
 #
 backup
+#
+src/__pycache__
