@@ -6,3 +6,6 @@ venv
 backup
 #
 src/__pycache__
+#
+windows/bin/*
+windows/.vs/
