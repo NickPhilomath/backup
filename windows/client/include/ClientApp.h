@@ -9,6 +9,8 @@
 #include <ws2tcpip.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <filesystem>
+#include <thread>
 
 #pragma comment (lib, "Ws2_32.lib")
 #pragma comment (lib, "Mswsock.lib")
@@ -20,18 +22,22 @@
 
 class ClientApp {
 public:
-    int Initialize();
     void Run();
 
 private:
-    WSADATA wsaData;
-    SOCKET ConnectSocket = INVALID_SOCKET;
-    struct addrinfo* result = NULL,
-        * ptr = NULL,
-        hints;
-    char* sendbuf = nullptr;
-    const char* address= "127.0.0.1";
-    char recvbuf[DEFAULT_BUFLEN];
-    int iResult, size;
-    int recvbuflen = DEFAULT_BUFLEN;
+    int Initialize();
+    int Connect();
+    void Send();
+    void Shutdown();
+    void Receive();
+    void CheckChanges();
+
+    WSADATA m_wsaData;
+    SOCKET m_ConnectSocket = INVALID_SOCKET;
+    struct addrinfo* m_ConnectResult = NULL, * ptr = NULL, hints;
+    char* m_sendbuf = nullptr;
+    const char* m_address= "127.0.0.1";
+    char m_recvbuf[DEFAULT_BUFLEN];
+    int m_result, m_sendSize;
+    int m_recvbuflen = DEFAULT_BUFLEN;
 };

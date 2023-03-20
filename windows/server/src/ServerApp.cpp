@@ -124,7 +124,7 @@ void ServerApp::ManageClients() {
                 closesocket(socket);
                 WSACleanup();
                 return;
-            } 
+            }
 
             printf(" done.\n");
 
